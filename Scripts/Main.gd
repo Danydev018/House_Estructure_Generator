@@ -15,20 +15,27 @@ var is_dragging = false
 var drag_offset = Vector3.ZERO  
 var original_position = Vector3.ZERO
 
+# Variables para handles de escalado  
+var scale_handles_scene = preload("res://Scenes/ScaleHandles.tscn")  
+var current_handles = null  
+var is_scaling = false  
+var scale_axis = ""  
+var original_scale = Vector3.ONE
+
+# Variables para escalado con handles  
+var scale_start_position = Vector3.ZERO
+
+
 func _ready():
 	if raycast == null:
 		print("❌ RayCast no encontrado.")
 	else:
 		print("✅ RayCast listo.")
 		
-	# Crear materiales  
-#	normal_material = SpatialMaterial.new()  
-#	normal_material.albedo_color = Color.WHITE  
 	  
 	selected_material = SpatialMaterial.new()  
 	selected_material.albedo_color = Color(Color.green, 0.2) 
-#	selected_material.emission_enabled = true  
-#	selected_material.emission = Color.YELLOW * 0.3
+
 
 func _input(event):  
 	if event is InputEventMouseButton:  
@@ -36,44 +43,36 @@ func _input(event):
 			if event.pressed:  
 				handle_left_click()  
 			else:  
-				# Soltar el arrastre  
 				if is_dragging:  
 					finish_drag()  
+				elif is_scaling:  
+					finish_scaling()  
 	  
-	elif event is InputEventMouseMotion and is_dragging:  
-		update_drag_position()  
+	elif event is InputEventMouseMotion:  
+		if is_dragging:  
+			update_drag_position()  
+		elif is_scaling:  
+			update_scaling()
   
 func handle_left_click():  
 	var raycast = $Camera/RayCast  
 	if raycast.is_colliding():  
 		var collider = raycast.get_collider()  
 		  
-		if collider.get_parent().has_method("is_block"):  
+		# PRIMERO verificar si es un handle de escalado  
+		if collider.name.begins_with("Handle") or (collider.get_parent() and collider.get_parent().name.begins_with("Handle")):  
+			var handle_node = collider if collider.name.begins_with("Handle") else collider.get_parent()  
+			start_scaling(handle_node.name, raycast.get_collision_point())  
+		elif collider.get_parent().has_method("is_block"):  
 			var block = collider.get_parent()  
 			if selected_block == block:  
-				# Iniciar arrastre del bloque ya seleccionado  
 				start_drag(raycast.get_collision_point())  
 			else:  
-				# Seleccionar nuevo bloque  
 				select_block(block)  
 		else:  
-			# Colocar nuevo bloque  
+			# Solo colocar nuevo bloque si NO es un handle  
 			place_new_block(raycast.get_collision_point())
 
-
-#func _input(event):  
-#	if event is InputEventMouseButton and event.pressed:  
-#		if event.button_index == BUTTON_LEFT:  
-#			var raycast = $Camera/RayCast  
-#			if raycast.is_colliding():  
-#				var collider = raycast.get_collider()  
-#
-#				# Si el collider es un bloque existente, seleccionarlo  
-#				if collider.get_parent().has_method("is_block"):  
-#					select_block(collider.get_parent())  
-#				else:  
-#					# Si no es un bloque, colocar nuevo bloque  
-#					place_new_block(raycast.get_collision_point())
 
 #FUNCIONES PARA SELECCIONAR BLOQUE
 func select_block(block):  
@@ -81,12 +80,19 @@ func select_block(block):
 	if selected_block != null:  
 		var mesh_instance = selected_block.get_node("StaticBody/MeshInstance")  
 		mesh_instance.material_override = normal_material  
+		# Remover handles anteriores  
+		if current_handles != null:  
+			current_handles.queue_free()  
 	  
 	# Seleccionar nuevo bloque  
 	selected_block = block  
 	var mesh_instance = block.get_node("StaticBody/MeshInstance")  
-	mesh_instance.material_override = selected_material
-
+	mesh_instance.material_override = selected_material  
+	  
+	# Crear handles de escalado  
+	show_scale_handles()
+	
+	
 func place_new_block(collision_point):    
 	var point = collision_point.snapped(Vector3.ONE)  
 	# Añadir offset Y para evitar enterramiento  
@@ -147,6 +153,75 @@ func is_valid_position(position):
 		if child != selected_block and child.translation.distance_to(position) < 0.5:  
 			return false  
 	return true
+	
+#FUNCIONES PARA ESCALAR CUBO
+func show_scale_handles():  
+	if selected_block == null:  
+		return  
+	  
+	current_handles = scale_handles_scene.instance()  
+	# Añadir como hijo de Main en lugar del cubo  
+	add_child(current_handles)  
+	  
+	# Posicionar handles en coordenadas globales  
+	var handle_x = current_handles.get_node("HandleX")  
+	var handle_z = current_handles.get_node("HandleZ")  
+	  
+	var cube_pos = selected_block.global_transform.origin  
+	handle_x.global_transform.origin = cube_pos + Vector3(selected_block.scale.x * 1.5, 1, 0)  
+	handle_z.global_transform.origin = cube_pos + Vector3(0, 1, selected_block.scale.z * 1.5)
+  
+func hide_scale_handles():  
+	if current_handles != null:  
+		current_handles.queue_free()  
+		current_handles = null
+		
+func start_scaling(handle_name, collision_point):  
+	is_scaling = true  
+	scale_axis = handle_name.replace("Handle", "").to_lower()  
+	original_scale = selected_block.scale  
+	scale_start_position = collision_point  
+  
+func update_scaling():  
+	if not is_scaling or selected_block == null:  
+		return  
+	  
+	var raycast = $Camera/RayCast  
+	if raycast.is_colliding():  
+		var current_position = raycast.get_collision_point()  
+		var delta = current_position - scale_start_position  
+		  
+		if scale_axis == "x":  
+			var scale_change = delta.x * 1
+			selected_block.scale.x = clamp(original_scale.x + scale_change, 0.5, 30.0)  
+		elif scale_axis == "z":  
+			var scale_change = delta.z * 1
+			selected_block.scale.z = clamp(original_scale.z + scale_change, 0.5, 30.0)  
+		  
+		# Actualizar handles en tiempo real  
+		update_handles_position() 
+  
+func finish_scaling():  
+	is_scaling = false  
+	scale_axis = ""  
+  
+func update_handles_position():    
+	if current_handles != null and selected_block != null:    
+		var handle_x = current_handles.get_node("HandleX")    
+		var handle_z = current_handles.get_node("HandleZ")    
+			
+		var cube_pos = selected_block.global_transform.origin    
+		  
+		# Margen dinámico: 20% del tamaño del cubo + distancia base  
+		var dynamic_margin_x = selected_block.scale.x * 0.5 + 0.5  
+		var dynamic_margin_z = selected_block.scale.z * 0.5 + 0.5  
+		  
+		var distance_x = selected_block.scale.x * 0.5 + dynamic_margin_x  
+		var distance_z = selected_block.scale.z * 0.5 + dynamic_margin_z  
+		  
+		handle_x.global_transform.origin = cube_pos + Vector3(distance_x, 1, 0)   
+		handle_z.global_transform.origin = cube_pos + Vector3(0, 1, distance_z)
+		
 #func _process(delta):
 #	if raycast.is_colliding():
 #		var collider = raycast.get_collider()
