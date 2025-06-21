@@ -10,7 +10,7 @@ func _ready():
 		print("❌ RayCast no encontrado.")
 	else:
 		print("✅ RayCast listo.")
-
+		
 func _input(event):
 	if event is InputEventMouseButton and event.button_index == BUTTON_LEFT and event.pressed:
 		if raycast and raycast.is_colliding():
@@ -20,9 +20,9 @@ func _input(event):
 			blocks_container.add_child(block)
 			print("✅ Bloque colocado en: ", point)
 
-func _process(delta):
-	if raycast.is_colliding():
-		var collider = raycast.get_collider()
-		print("🎯 true: ", collider)
-	else:
-		print("❌ false")
+#func _process(delta):
+#	if raycast.is_colliding():
+#		var collider = raycast.get_collider()
+#		print("🎯 true: ", collider)
+#	else:
+#		print("❌ false")
