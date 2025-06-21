@@ -33,7 +33,7 @@ mesh = SubResource( 2 )
 skeleton = NodePath("../CollisionShape")
 
 [node name="CollisionShape" type="CollisionShape" parent="Floor"]
-transform = Transform( 100, 0, 0, 0, 0.5, 0, 0, 0, 100, 0, 0, 0 )
+transform = Transform( 100, 0, 0, 0, 0, 0, 0, 0, 100, 0, 0, 0 )
 shape = SubResource( 1 )
 
 [node name="CanvasLayer" type="CanvasLayer" parent="."]

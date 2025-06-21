@@ -13,9 +13,11 @@ script = ExtResource( 1 )
 [node name="StaticBody" type="StaticBody" parent="." groups=["blocks"]]
 
 [node name="MeshInstance" type="MeshInstance" parent="StaticBody" groups=["blocks"]]
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0.0194268, 1.00801, 0.00730348 )
 mesh = SubResource( 1 )
 skeleton = NodePath("../..")
 material/0 = ExtResource( 2 )
 
 [node name="CollisionShape" type="CollisionShape" parent="StaticBody" groups=["blocks"]]
+transform = Transform( 1, 0, 0, 0, 2, 0, 0, 0, 1, 0.000179768, -0.00417012, 0.00958753 )
 shape = SubResource( 2 )

@@ -87,21 +87,26 @@ func select_block(block):
 	var mesh_instance = block.get_node("StaticBody/MeshInstance")  
 	mesh_instance.material_override = selected_material
 
-func place_new_block(collision_point):  
+func place_new_block(collision_point):    
 	var point = collision_point.snapped(Vector3.ONE)  
-	var block = block_scene.instance()  
-	block.translation = point  
-	$BlocksContainer.add_child(block)  
-	  
-	# Aplicar material normal al nuevo bloque  
-	var mesh_instance = block.get_node("StaticBody/MeshInstance")  
+	# Añadir offset Y para evitar enterramiento  
+	point.y += 0 # Media altura del cubo  
+	var block = block_scene.instance()    
+	block.translation = point    
+	$BlocksContainer.add_child(block)    
+		
+	# Aplicar material normal al nuevo bloque    
+	var mesh_instance = block.get_node("StaticBody/MeshInstance")    
 	mesh_instance.material_override = normal_material
 
 #FUNCIONES DE ARRASTRE
 func start_drag(collision_point):  
-	is_dragging = true  
-	original_position = selected_block.translation  
-	drag_offset = selected_block.translation - collision_point.snapped(Vector3.ONE)  
+	is_dragging = true    
+	original_position = selected_block.translation    
+	# Calcular offset considerando la altura del cubo  
+	var snapped_point = collision_point.snapped(Vector3.ONE)  
+	snapped_point.y += 0  # Añadir offset de altura  
+	drag_offset = selected_block.translation - snapped_point  
 	  
 	# Cambiar material para indicar arrastre  
 	var drag_material = SpatialMaterial.new()  
@@ -114,12 +119,14 @@ func start_drag(collision_point):
 	var mesh_instance = selected_block.get_node("StaticBody/MeshInstance")  
 	mesh_instance.material_override = drag_material  
   
-func update_drag_position():  
-	var raycast = $Camera/RayCast  
-	if raycast.is_colliding():  
+func update_drag_position():    
+	var raycast = $Camera/RayCast    
+	if raycast.is_colliding():    
 		var new_position = raycast.get_collision_point().snapped(Vector3.ONE) + drag_offset  
-		selected_block.translation = new_position  
-  
+		# Asegurar que el cubo no se entierre  
+		new_position.y = max(new_position.y, 0)  # Mínimo Y = 0.5  
+		selected_block.translation = new_position
+		
 func finish_drag():  
 	is_dragging = false  
 	  
