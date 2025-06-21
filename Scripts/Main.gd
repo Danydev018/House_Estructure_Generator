@@ -23,6 +23,6 @@ func _input(event):
 func _process(delta):
 	if raycast.is_colliding():
 		var collider = raycast.get_collider()
-		print("🎯 Apuntando a: ", collider)
+		print("🎯 true: ", collider)
 	else:
-		print("❌ Nada bajo el cursor")
+		print("❌ false")
