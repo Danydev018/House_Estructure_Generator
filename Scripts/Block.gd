@@ -11,7 +11,7 @@ func _ready():
 
 func highlight(active: bool):
 	if active:
-		$MeshInstance.material_override = preload("res://HighlightMaterial.tres")
+		$MeshInstance.material_override = preload("res://Materials/HighlightMaterial.tres")
 	else:
 		$MeshInstance.material_override = null
 # Called every frame. 'delta' is the elapsed time since the previous frame.

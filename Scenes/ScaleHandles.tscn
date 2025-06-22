@@ -1,34 +1,49 @@
-[gd_scene load_steps=6 format=2]
+[gd_scene load_steps=5 format=2]
 
-[ext_resource path="res://RayHandle.tres" type="Material" id=1]
+[ext_resource path="res://Materials/RayHandle.tres" type="Material" id=2]
 
-[sub_resource type="SphereMesh" id=1]
+[sub_resource type="CylinderShape" id=1]
 
-[sub_resource type="SphereShape" id=2]
+[sub_resource type="CylinderMesh" id=2]
 
-[sub_resource type="SphereMesh" id=3]
-
-[sub_resource type="SphereShape" id=4]
+[sub_resource type="PrismMesh" id=3]
 
 [node name="ScaleHandles" type="Spatial"]
 
 [node name="HandleX" type="StaticBody" parent="."]
-transform = Transform( 0.131212, 0, 0, 0, 0.120962, 0, 0, 0, 0.118418, 0, 0, 0 )
-
-[node name="MeshInstance" type="MeshInstance" parent="HandleX"]
-mesh = SubResource( 1 )
+transform = Transform( 0.0751806, 0.000102696, -6.46094e-05, 6.0513e-05, 0.000206032, 0.0695245, 0.000592628, -0.013049, 0.00109722, 0, 0, 0 )
 
 [node name="CollisionShape" type="CollisionShape" parent="HandleX"]
-transform = Transform( 1.01018, 0, 0, 0, 1.1331, 0, 0, 0, 1.11713, 0, 0, 0 )
-shape = SubResource( 2 )
+transform = Transform( 0.9939, 0, 0, 0, 12.6001, 0, 0, 0, 1.24013, -0.00547187, 8.05447, -0.0281494 )
+shape = SubResource( 1 )
+
+[node name="cilindro" type="MeshInstance" parent="HandleX"]
+transform = Transform( 0.000910131, -1.30231, 0.00678885, 1.77696, 0.0239957, 0.0352051, -0.0049982, 0.023298, 0.44238, -8.9407e-08, 12.8373, 0 )
+mesh = SubResource( 2 )
+material/0 = ExtResource( 2 )
+__meta__ = {
+"_edit_lock_": true
+}
+
+[node name="cono" type="MeshInstance" parent="HandleX/cilindro"]
+transform = Transform( -2.37333, 0.000485729, -6.13856e-05, -4.43335e-05, -0.80106, -0.00166073, -1.4901e-05, -0.00435661, 1.00051, -6.42461e-07, -1.47606, -0.0887081 )
+material_override = ExtResource( 2 )
+mesh = SubResource( 3 )
 
 [node name="HandleZ" type="StaticBody" parent="."]
-transform = Transform( 0.127483, 0, 0, 0, 0.126277, 0, 0, 0, 0.118078, 0, 0, 0 )
-
-[node name="MeshInstance" type="MeshInstance" parent="HandleZ"]
-mesh = SubResource( 3 )
-material/0 = ExtResource( 1 )
+transform = Transform( 0.0816787, 0, 0, 0, 0.0132086, 0, 0, 0, 0.0767969, 0, 0, 0 )
 
 [node name="CollisionShape" type="CollisionShape" parent="HandleZ"]
-transform = Transform( 1.10802, 0, 0, 0, 1.03952, 0, 0, 0, 1.03282, 0, 0, 0 )
-shape = SubResource( 4 )
+transform = Transform( 0.914858, 0, 0, 0, 12.4498, 0, 0, 0, 1.13267, -0.0050367, 7.95837, -0.0257102 )
+shape = SubResource( 1 )
+
+[node name="cilindro" type="MeshInstance" parent="HandleZ"]
+transform = Transform( -0.283862, 0.022552, -0.00724466, 0.0337666, -0.00237149, -2.32894, -0.00568184, -1.2749, -1.68097e-05, 0, 12.6842, 0 )
+mesh = SubResource( 2 )
+skeleton = NodePath("../../HandleX")
+material/0 = ExtResource( 2 )
+
+[node name="cono" type="MeshInstance" parent="HandleZ/cilindro"]
+transform = Transform( -2.37333, 0.000485729, -6.13856e-05, -4.43335e-05, -0.80106, -0.00166073, -1.4901e-05, -0.00435661, 1.00051, -6.42461e-07, -1.47606, -0.0887081 )
+material_override = ExtResource( 2 )
+mesh = SubResource( 3 )
