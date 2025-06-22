@@ -274,8 +274,8 @@ func update_handles_position():
 		var dynamic_margin_x = selected_block.scale.x * 0.5 + 0.3   
 		var distance_x = selected_block.scale.x * 0.5 + dynamic_margin_x    
 			
-		handle_x.global_transform.origin = cube_pos + Vector3(distance_x, 1.2, 0)     
-		handle_x_neg.global_transform.origin = cube_pos + Vector3(-distance_x , 1, 0)
+		handle_x.global_transform.origin = cube_pos + Vector3(distance_x, 2, 0)     
+		handle_x_neg.global_transform.origin = cube_pos + Vector3(-distance_x , 1.8, 0)
 
 # warning-ignore:unused_argument
 #func _process(delta):
