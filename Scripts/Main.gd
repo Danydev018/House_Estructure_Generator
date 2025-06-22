@@ -25,7 +25,12 @@ var original_scale = Vector3.ONE
 # Variables para escalado con handles  
 var scale_start_position = Vector3.ZERO
 
-
+# Agregar estas variables al inicio del script  
+var click_count = 0
+var last_click_time = 0.0  
+var last_clicked_block = null  
+var double_click_threshold = 0.3  # 300ms para doble clic  
+	
 func _ready():
 	if raycast == null:
 		print("❌ RayCast no encontrado.")
@@ -53,28 +58,37 @@ func _input(event):
 			update_drag_position()  
 		elif is_scaling:  
 			update_scaling()
-  
-func handle_left_click():  
-# warning-ignore:shadowed_variable
-	var raycast = $Camera/RayCast  
-	if raycast.is_colliding():  
-		var collider = raycast.get_collider()  
-		  
-		# PRIMERO verificar si es un handle de escalado  
-		if collider.name.begins_with("Handle") or (collider.get_parent() and collider.get_parent().name.begins_with("Handle")):  
-			var handle_node = collider if collider.name.begins_with("Handle") else collider.get_parent()  
-			start_scaling(handle_node.name, raycast.get_collision_point())  
-		elif collider.get_parent().has_method("is_block"):  
-			var block = collider.get_parent()  
-			if selected_block == block:  
-				start_drag(raycast.get_collision_point())  
-			else:  
-				select_block(block)  
-		else:  
-# warning-ignore:shadowed_variable
-			# Solo colocar nuevo bloque si NO es un handle  
-			place_new_block(raycast.get_collision_point())
 
+
+  
+# Modificar handle_left_click()  
+# Modificar la función handle_left_click()  
+func handle_left_click():    
+	var raycast = $Camera/RayCast    
+	if raycast.is_colliding():    
+		var collider = raycast.get_collider()    
+		var current_time = OS.get_ticks_msec() / 1000.0  
+			
+		# PRIMERO verificar si es un handle de escalado    
+		if collider.name.begins_with("Handle") or (collider.get_parent() and collider.get_parent().name.begins_with("Handle")):    
+			var handle_node = collider if collider.name.begins_with("Handle") else collider.get_parent()    
+			start_scaling(handle_node.name, raycast.get_collision_point())    
+		elif collider.get_parent().has_method("is_block"):    
+			var block = collider.get_parent()    
+			if selected_block == block:    
+				# Verificar doble clic  
+				if last_clicked_block == block and (current_time - last_click_time) < double_click_threshold:  
+					deselect_block()  # Nueva función para deseleccionar  
+				else:  
+					start_drag(raycast.get_collision_point())    
+			else:    
+				select_block(block)    
+			  
+			# Actualizar variables de doble clic  
+			last_clicked_block = block  
+			last_click_time = current_time  
+		else:    
+			place_new_block(raycast.get_collision_point())
 
 #FUNCIONES PARA SELECCIONAR BLOQUE
 func select_block(block):  
@@ -93,7 +107,16 @@ func select_block(block):
 	  
 	# Crear handles de escalado  
 	show_scale_handles()
-	
+
+func deselect_block():  
+	if selected_block != null:  
+		var mesh_instance = selected_block.get_node("StaticBody/MeshInstance")    
+		mesh_instance.material_override = normal_material    
+		# Remover handles  
+		if current_handles != null:    
+			current_handles.queue_free()  
+			current_handles = null  
+		selected_block = null
 	
 func place_new_block(collision_point):      
 	var point = collision_point.snapped(Vector3.ONE)    
@@ -109,6 +132,23 @@ func place_new_block(collision_point):
 	var mesh_instance = block.get_node("StaticBody/MeshInstance")      
 	mesh_instance.material_override = normal_material
 
+func delete_block(block):  
+	if block == null:  
+		return  
+	  
+	# Si es el bloque seleccionado, deseleccionarlo primero  
+	if selected_block == block:  
+		deselect_block()  
+	  
+	# Eliminar el bloque del contenedor  
+	if block.get_parent() == $BlocksContainer:  
+		block.queue_free()  
+	  
+	# Resetear variables de clic  
+	click_count = 0  
+	last_clicked_block = null
+	
+	
 #FUNCIONES DE ARRASTRE
 func start_drag(collision_point):  
 	is_dragging = true    
@@ -225,9 +265,9 @@ func update_handles_position():
 		handle_x_neg.global_transform.origin = cube_pos + Vector3(-distance_x , 1, 0)
 
 # warning-ignore:unused_argument
-func _process(delta):
-	if raycast.is_colliding():
-		var collider = raycast.get_collider()
-		print("🎯 true: ", collider)
-	else:
-		print("❌ false")
+#func _process(delta):
+#	if raycast.is_colliding():
+#		var collider = raycast.get_collider()
+#		print("🎯 true: ", collider)
+#	else:
+#		print("❌ false")
