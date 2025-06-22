@@ -55,6 +55,7 @@ func _input(event):
 			update_scaling()
   
 func handle_left_click():  
+# warning-ignore:shadowed_variable
 	var raycast = $Camera/RayCast  
 	if raycast.is_colliding():  
 		var collider = raycast.get_collider()  
@@ -70,6 +71,7 @@ func handle_left_click():
 			else:  
 				select_block(block)  
 		else:  
+# warning-ignore:shadowed_variable
 			# Solo colocar nuevo bloque si NO es un handle  
 			place_new_block(raycast.get_collision_point())
 
@@ -93,16 +95,18 @@ func select_block(block):
 	show_scale_handles()
 	
 	
-func place_new_block(collision_point):    
-	var point = collision_point.snapped(Vector3.ONE)  
-	# Añadir offset Y para evitar enterramiento  
-	point.y += 0 # Media altura del cubo  
-	var block = block_scene.instance()    
-	block.translation = point    
-	$BlocksContainer.add_child(block)    
-		
-	# Aplicar material normal al nuevo bloque    
-	var mesh_instance = block.get_node("StaticBody/MeshInstance")    
+func place_new_block(collision_point):      
+	var point = collision_point.snapped(Vector3.ONE)    
+	point.y += 0   
+	var block = block_scene.instance()      
+	block.translation = point      
+	  
+	# Establecer dimensiones de pared (ejemplo: ancho=3, altura=2, grosor=0.5)  
+	block.scale = Vector3(3.0, 2.0, 0.5)  # X=ancho, Y=altura, Z=grosor  
+	  
+	$BlocksContainer.add_child(block)      
+	  
+	var mesh_instance = block.get_node("StaticBody/MeshInstance")      
 	mesh_instance.material_override = normal_material
 
 #FUNCIONES DE ARRASTRE
@@ -166,9 +170,9 @@ func show_scale_handles():
 	var handle_x_neg = current_handles.get_node("HandleXNeg")    
 		
 	var cube_pos = selected_block.global_transform.origin    
-	handle_x.global_transform.origin = cube_pos + Vector3(selected_block.scale.x * 1.2, 1.2, 0)    
-	handle_x_neg.global_transform.origin = cube_pos + Vector3(-selected_block.scale.x * 1.5, 1, 0)
-  
+	handle_x.global_transform.origin = cube_pos + Vector3(selected_block.scale.x * 1.1, 2, 0)    
+	handle_x_neg.global_transform.origin = cube_pos + Vector3(-selected_block.scale.x * 1.2, 1.8, 0)
+ 
 func hide_scale_handles():  
 	if current_handles != null:  
 		current_handles.queue_free()  
@@ -188,6 +192,7 @@ func update_scaling():
 	if not is_scaling or selected_block == null:    
 		return    
 		
+# warning-ignore:shadowed_variable
 	var raycast = $Camera/RayCast    
 	if raycast.is_colliding():    
 		var current_position = raycast.get_collision_point()    
@@ -219,6 +224,7 @@ func update_handles_position():
 		handle_x.global_transform.origin = cube_pos + Vector3(distance_x, 1.2, 0)     
 		handle_x_neg.global_transform.origin = cube_pos + Vector3(-distance_x , 1, 0)
 
+# warning-ignore:unused_argument
 func _process(delta):
 	if raycast.is_colliding():
 		var collider = raycast.get_collider()
