@@ -30,6 +30,9 @@ var click_count = 0
 var last_click_time = 0.0  
 var last_clicked_block = null  
 var double_click_threshold = 0.3  # 300ms para doble clic  
+
+# Agregar después de las variables existentes  
+onready var delete_button = $CanvasLayer/DeleteButton
 	
 func _ready():
 	if raycast == null:
@@ -40,7 +43,8 @@ func _ready():
 	  
 	selected_material = SpatialMaterial.new()  
 	selected_material.albedo_color = Color(Color.green, 0.2) 
-
+	# Conectar botón de eliminación  
+	delete_button.connect("pressed", self, "_on_delete_button_pressed")
 
 func _input(event):  
 	if event is InputEventMouseButton:  
@@ -107,7 +111,9 @@ func select_block(block):
 	  
 	# Crear handles de escalado  
 	show_scale_handles()
-
+	# Mostrar botón de eliminación  
+	delete_button.visible = true
+	
 func deselect_block():  
 	if selected_block != null:  
 		var mesh_instance = selected_block.get_node("StaticBody/MeshInstance")    
@@ -117,6 +123,13 @@ func deselect_block():
 			current_handles.queue_free()  
 			current_handles = null  
 		selected_block = null
+		# Ocultar botón de eliminación  
+		delete_button.visible = false
+
+func _on_delete_button_pressed():  
+	if selected_block != null:  
+		delete_block(selected_block)  
+		delete_button.visible = false
 	
 func place_new_block(collision_point):      
 	var point = collision_point.snapped(Vector3.ONE)    
