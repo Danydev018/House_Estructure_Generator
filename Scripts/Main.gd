@@ -155,76 +155,73 @@ func is_valid_position(position):
 	return true
 	
 #FUNCIONES PARA ESCALAR CUBO
-func show_scale_handles():  
-	if selected_block == null:  
-		return  
-	  
-	current_handles = scale_handles_scene.instance()  
-	# Añadir como hijo de Main en lugar del cubo  
-	add_child(current_handles)  
-	  
-	# Posicionar handles en coordenadas globales  
-	var handle_x = current_handles.get_node("HandleX")  
-	var handle_z = current_handles.get_node("HandleZ")  
-	  
-	var cube_pos = selected_block.global_transform.origin  
-	handle_x.global_transform.origin = cube_pos + Vector3(selected_block.scale.x * 1.5, 1, 0)  
-	handle_z.global_transform.origin = cube_pos + Vector3(0, 1, selected_block.scale.z * 1.5)
+func show_scale_handles():    
+	if selected_block == null:    
+		return    
+		
+	current_handles = scale_handles_scene.instance()    
+	add_child(current_handles)    
+		
+	var handle_x = current_handles.get_node("HandleX")    
+	var handle_x_neg = current_handles.get_node("HandleXNeg")    
+		
+	var cube_pos = selected_block.global_transform.origin    
+	handle_x.global_transform.origin = cube_pos + Vector3(selected_block.scale.x * 1.2, 1.2, 0)    
+	handle_x_neg.global_transform.origin = cube_pos + Vector3(-selected_block.scale.x * 1.5, 1, 0)
   
 func hide_scale_handles():  
 	if current_handles != null:  
 		current_handles.queue_free()  
 		current_handles = null
 		
-func start_scaling(handle_name, collision_point):  
-	is_scaling = true  
-	scale_axis = handle_name.replace("Handle", "").to_lower()  
-	original_scale = selected_block.scale  
+func start_scaling(handle_name, collision_point):    
+	is_scaling = true    
+	if handle_name == "HandleX":  
+		scale_axis = "x_pos"  
+	elif handle_name == "HandleXNeg":  
+		scale_axis = "x_neg"  
+	original_scale = selected_block.scale    
 	scale_start_position = collision_point  
   
-func update_scaling():  
-	if not is_scaling or selected_block == null:  
-		return  
-	  
-	var raycast = $Camera/RayCast  
-	if raycast.is_colliding():  
-		var current_position = raycast.get_collision_point()  
-		var delta = current_position - scale_start_position  
-		  
-		if scale_axis == "x":  
-			var scale_change = delta.x * 1
-			selected_block.scale.x = clamp(original_scale.x + scale_change, 0.5, 30.0)  
-		elif scale_axis == "z":  
-			var scale_change = delta.z * 1
-			selected_block.scale.z = clamp(original_scale.z + scale_change, 0.5, 30.0)  
-		  
-		# Actualizar handles en tiempo real  
-		update_handles_position() 
+
+func update_scaling():    
+	if not is_scaling or selected_block == null:    
+		return    
+		
+	var raycast = $Camera/RayCast    
+	if raycast.is_colliding():    
+		var current_position = raycast.get_collision_point()    
+		var delta = current_position - scale_start_position    
+			
+		if scale_axis == "x_pos":    
+			var scale_change = delta.x * 1  
+			selected_block.scale.x = clamp(original_scale.x + scale_change, 0.5, 30.0)    
+		elif scale_axis == "x_neg":    
+			var scale_change = -delta.x * 1  # Invertir dirección  
+			selected_block.scale.x = clamp(original_scale.x + scale_change, 0.5, 30.0)    
+			
+		update_handles_position()
+
   
 func finish_scaling():  
 	is_scaling = false  
 	scale_axis = ""  
   
-func update_handles_position():    
-	if current_handles != null and selected_block != null:    
-		var handle_x = current_handles.get_node("HandleX")    
-		var handle_z = current_handles.get_node("HandleZ")    
+func update_handles_position():      
+	if current_handles != null and selected_block != null:      
+		var handle_x = current_handles.get_node("HandleX")      
+		var handle_x_neg = current_handles.get_node("HandleXNeg")      
+			  
+		var cube_pos = selected_block.global_transform.origin      
+		var dynamic_margin_x = selected_block.scale.x * 0.5 + 0.3   
+		var distance_x = selected_block.scale.x * 0.5 + dynamic_margin_x    
 			
-		var cube_pos = selected_block.global_transform.origin    
-		  
-		# Margen dinámico: 20% del tamaño del cubo + distancia base  
-		var dynamic_margin_x = selected_block.scale.x * 0.5 + 0.5  
-		var dynamic_margin_z = selected_block.scale.z * 0.5 + 0.5  
-		  
-		var distance_x = selected_block.scale.x * 0.5 + dynamic_margin_x  
-		var distance_z = selected_block.scale.z * 0.5 + dynamic_margin_z  
-		  
-		handle_x.global_transform.origin = cube_pos + Vector3(distance_x, 1, 0)   
-		handle_z.global_transform.origin = cube_pos + Vector3(0, 1, distance_z)
-		
-#func _process(delta):
-#	if raycast.is_colliding():
-#		var collider = raycast.get_collider()
-#		print("🎯 true: ", collider)
-#	else:
-#		print("❌ false")
+		handle_x.global_transform.origin = cube_pos + Vector3(distance_x, 1.2, 0)     
+		handle_x_neg.global_transform.origin = cube_pos + Vector3(-distance_x , 1, 0)
+
+func _process(delta):
+	if raycast.is_colliding():
+		var collider = raycast.get_collider()
+		print("🎯 true: ", collider)
+	else:
+		print("❌ false")
