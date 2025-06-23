@@ -90,4 +90,19 @@ custom_styles/normal = SubResource( 3 )
 icon = ExtResource( 4 )
 icon_align = 1
 
+[node name="ScaleSlider" type="HSlider" parent="CanvasLayer"]
+visible = false
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+margin_left = -150.0
+margin_top = -100.0
+margin_right = 150.0
+margin_bottom = -80.0
+min_value = 0.5
+max_value = 30.0
+step = 0.1
+value = 3.0
+
 [node name="BlocksContainer" type="Spatial" parent="."]
