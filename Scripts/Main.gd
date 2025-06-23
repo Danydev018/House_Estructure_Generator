@@ -46,55 +46,74 @@ func _ready():
 	scale_slider.connect("value_changed", self, "_on_scale_slider_changed")  
 	create_button.connect("pressed", self, "_on_create_button_pressed")
   
-func _input(event):    
-	if event is InputEventMouseButton:    
-		if event.button_index == BUTTON_LEFT:    
-			if event.pressed:    
-				handle_left_click()    
-			else:    
-				if is_dragging:    
-					finish_drag()    
-				elif is_rotating:    
-					# Solo rotación de 90 grados  
-					if rotation_axis == "HandleZPos":  
-						selected_block.rotation_degrees.y += 90  
-					elif rotation_axis == "HandleZNeg":  
-						selected_block.rotation_degrees.y -= 90  
-					update_rotation_handles_position()  
-					finish_rotation()  
-					  
-	elif event is InputEventMouseMotion:    
-		if is_dragging:    
-			update_drag_position()  
+func _input(event):      
+	if event is InputEventMouseButton:      
+		if event.button_index == BUTTON_LEFT:      
+			if event.pressed:      
+				handle_left_click(event.position)  # Pasar posición del touch  
+			else:      
+				if is_dragging:      
+					finish_drag()      
+				elif is_rotating:      
+					# Solo rotación de 90 grados    
+					if rotation_axis == "HandleZPos":    
+						selected_block.rotation_degrees.y += 90    
+					elif rotation_axis == "HandleZNeg":    
+						selected_block.rotation_degrees.y -= 90    
+					update_rotation_handles_position()    
+					finish_rotation()    
+						
+	elif event is InputEventMouseMotion:      
+		if is_dragging:      
+			update_drag_position(event.position)  # También pasar posición para drag
   
-func handle_left_click():        
-	var raycast = $Camera/RayCast        
-	if raycast.is_colliding():        
-		var collider = raycast.get_collider()        
-		var current_time = OS.get_ticks_msec() / 1000.0      
+func handle_left_click(touch_position = null):          
+	var camera = $Camera  
+	var raycast = $Camera/RayCast  
+	  
+	# Si se proporciona posición de touch, usar raycast desde esa posición  
+	if touch_position != null:  
+		var from = camera.project_ray_origin(touch_position)  
+		var to = from + camera.project_ray_normal(touch_position) * 100  
+		  
+		var space_state = get_world().direct_space_state  
+		var result = space_state.intersect_ray(from, to)  
+		  
+		if result:  
+			var collider = result.collider  
+			var collision_point = result.position  
+			process_collision(collider, collision_point)  
+		# Si no hay colisión, no hacer nada (permitir movimiento de cámara)  
+	else:  
+		# Usar el raycast tradicional del crosshair  
+		if raycast.is_colliding():          
+			var collider = raycast.get_collider()          
+			var collision_point = raycast.get_collision_point()  
+			process_collision(collider, collision_point)  
+  
+func process_collision(collider, collision_point):  
+	var current_time = OS.get_ticks_msec() / 1000.0        
+		  
+	# Handles de rotación    
+	if collider.name.begins_with("HandleZ") or (collider.get_parent() and collider.get_parent().name.begins_with("HandleZ")):          
+		var handle_node = collider if collider.name.begins_with("HandleZ") else collider.get_parent()          
+		start_rotation(handle_node.name)      
+		return    
 			
-		# Handles de rotación  
-		if collider.name.begins_with("HandleZ") or (collider.get_parent() and collider.get_parent().name.begins_with("HandleZ")):        
-			var handle_node = collider if collider.name.begins_with("HandleZ") else collider.get_parent()        
-			start_rotation(handle_node.name)    
-			return  
-			  
-		elif collider.get_parent().has_method("is_block"):        
-			var block = collider.get_parent()        
-			if selected_block == block:        
-				# Verificar doble clic      
-				if last_clicked_block == block and (current_time - last_click_time) < double_click_threshold:      
-					deselect_block()      
-				else:      
-					start_drag(raycast.get_collision_point())        
+	elif collider.get_parent().has_method("is_block"):          
+		var block = collider.get_parent()          
+		if selected_block == block:          
+			# Verificar doble clic        
+			if last_clicked_block == block and (current_time - last_click_time) < double_click_threshold:        
+				deselect_block()        
 			else:        
-				select_block(block)        
-				  
-			# Actualizar variables de doble clic      
-			last_clicked_block = block      
-			last_click_time = current_time      
-#		else:        
-#			place_new_block(raycast.get_collision_point())  
+				start_drag(collision_point)          
+		else:          
+			select_block(block)          
+				
+		# Actualizar variables de doble clic        
+		last_clicked_block = block        
+		last_click_time = current_time
   
 # FUNCIONES PARA SELECCIONAR BLOQUE  
 func select_block(block):      
@@ -212,13 +231,26 @@ func start_drag(collision_point):
 	var mesh_instance = selected_block.get_node("StaticBody/MeshInstance")    
 	mesh_instance.material_override = drag_material    
 	
-func update_drag_position():      
-	var raycast = $Camera/RayCast      
-	if raycast.is_colliding():      
-		var new_position = raycast.get_collision_point().snapped(Vector3.ONE) + drag_offset    
-		# Asegurar que el cubo no se entierre    
-		new_position.y = max(new_position.y, 0)  # Mínimo Y = 0.5    
-		selected_block.translation = new_position  
+func update_drag_position(touch_position = null):        
+	if touch_position != null:  
+		var camera = $Camera  
+		var from = camera.project_ray_origin(touch_position)  
+		var to = from + camera.project_ray_normal(touch_position) * 100  
+		  
+		var space_state = get_world().direct_space_state  
+		var result = space_state.intersect_ray(from, to)  
+		  
+		if result:  
+			var new_position = result.position.snapped(Vector3.ONE) + drag_offset      
+			new_position.y = max(new_position.y, 0)  
+			selected_block.translation = new_position  
+	else:  
+		# Usar raycast tradicional como fallback  
+		var raycast = $Camera/RayCast        
+		if raycast.is_colliding():        
+			var new_position = raycast.get_collision_point().snapped(Vector3.ONE) + drag_offset      
+			new_position.y = max(new_position.y, 0)  
+			selected_block.translation = new_position  
 		  
 func finish_drag():    
 	is_dragging = false    
