@@ -212,26 +212,30 @@ func delete_block(block):
 	last_clicked_block = null  
   
 # FUNCIONES DE ARRASTRE  
-func start_drag(collision_point):    
-	is_dragging = true      
-	original_position = selected_block.translation      
-	# Calcular offset considerando la altura del cubo    
-	var snapped_point = collision_point.snapped(Vector3.ONE)    
-	snapped_point.y += 0  # Añadir offset de altura    
-	drag_offset = selected_block.translation - snapped_point    
-		
-	# Cambiar material para indicar arrastre    
-	var drag_material = SpatialMaterial.new()    
-	drag_material.albedo_color = Color.cyan   
-	drag_material.emission_enabled = true    
-	drag_material.emission = Color.cyan * 0.5    
-	drag_material.flags_transparent = true    
-	drag_material.albedo_color.a = 0.7    
-		
-	var mesh_instance = selected_block.get_node("StaticBody/MeshInstance")    
+func start_drag(collision_point):      
+	is_dragging = true        
+	original_position = selected_block.translation        
+	  
+	# Calcular offset solo en X y Z, ignorar Y completamente  
+	var snapped_point = collision_point.snapped(Vector3.ONE)      
+	snapped_point.y = selected_block.translation.y  # Forzar misma altura  
+	drag_offset = selected_block.translation - snapped_point      
+	drag_offset.y = 0  # Eliminar cualquier componente Y del offset      
+		  
+	# Cambiar material para indicar arrastre      
+	var drag_material = SpatialMaterial.new()      
+	drag_material.albedo_color = Color.cyan     
+	drag_material.emission_enabled = true      
+	drag_material.emission = Color.cyan * 0.5      
+	drag_material.flags_transparent = true      
+	drag_material.albedo_color.a = 0.7      
+		  
+	var mesh_instance = selected_block.get_node("StaticBody/MeshInstance")      
 	mesh_instance.material_override = drag_material    
 	
 func update_drag_position(touch_position = null):        
+	var new_position  
+	  
 	if touch_position != null:  
 		var camera = $Camera  
 		var from = camera.project_ray_origin(touch_position)  
@@ -241,16 +245,19 @@ func update_drag_position(touch_position = null):
 		var result = space_state.intersect_ray(from, to)  
 		  
 		if result:  
-			var new_position = result.position.snapped(Vector3.ONE) + drag_offset      
-			new_position.y = max(new_position.y, 0)  
-			selected_block.translation = new_position  
+			new_position = result.position.snapped(Vector3.ONE) + drag_offset      
+		else:  
+			return  # No hacer nada si no hay colisión  
 	else:  
-		# Usar raycast tradicional como fallback  
 		var raycast = $Camera/RayCast        
 		if raycast.is_colliding():        
-			var new_position = raycast.get_collision_point().snapped(Vector3.ONE) + drag_offset      
-			new_position.y = max(new_position.y, 0)  
-			selected_block.translation = new_position  
+			new_position = raycast.get_collision_point().snapped(Vector3.ONE) + drag_offset      
+		else:  
+			return  
+	  
+	# Mantener SIEMPRE la altura original, sin excepciones  
+	new_position.y = original_position.y  
+	selected_block.translation = new_position
 		  
 func finish_drag():    
 	is_dragging = false    

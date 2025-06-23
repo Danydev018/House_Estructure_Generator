@@ -52,7 +52,7 @@ shadow_offset = Vector2( -20, -30 )
 script = ExtResource( 2 )
 
 [node name="Camera" type="Camera" parent="."]
-transform = Transform( 1, 0, 0, 0, 0.707107, 0.707107, 0, -0.707107, 0.707107, 0, 10, 10 )
+transform = Transform( 1, 0, 0, 0, 0.707107, 0.707107, 0, -0.707107, 0.707107, 0, 13.9772, 13.8784 )
 current = true
 script = ExtResource( 1 )
 
