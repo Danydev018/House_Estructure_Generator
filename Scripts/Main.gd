@@ -31,6 +31,13 @@ var last_click_time = 0.0
 var last_clicked_block = null  
 var double_click_threshold = 0.3  # 300ms para doble clic  
 
+#Variables para manejar la rotacion
+var rotation_handles_scene = preload("res://Scenes/RotationHandles.tscn")  
+var current_rotation_handles = null  
+var is_rotating = false  
+var rotation_axis = ""
+
+
 # Agregar después de las variables existentes  
 onready var delete_button = $CanvasLayer/DeleteButton
 	
@@ -67,63 +74,78 @@ func _input(event):
   
 # Modificar handle_left_click()  
 # Modificar la función handle_left_click()  
-func handle_left_click():    
-	var raycast = $Camera/RayCast    
-	if raycast.is_colliding():    
-		var collider = raycast.get_collider()    
-		var current_time = OS.get_ticks_msec() / 1000.0  
-			
-		# PRIMERO verificar si es un handle de escalado    
-		if collider.name.begins_with("Handle") or (collider.get_parent() and collider.get_parent().name.begins_with("Handle")):    
-			var handle_node = collider if collider.name.begins_with("Handle") else collider.get_parent()    
-			start_scaling(handle_node.name, raycast.get_collision_point())    
-		elif collider.get_parent().has_method("is_block"):    
-			var block = collider.get_parent()    
-			if selected_block == block:    
-				# Verificar doble clic  
-				if last_clicked_block == block and (current_time - last_click_time) < double_click_threshold:  
-					deselect_block()  # Nueva función para deseleccionar  
-				else:  
-					start_drag(raycast.get_collision_point())    
-			else:    
-				select_block(block)    
+func handle_left_click():      
+	var raycast = $Camera/RayCast      
+	if raycast.is_colliding():      
+		var collider = raycast.get_collider()      
+		var current_time = OS.get_ticks_msec() / 1000.0    
+		  
+		if collider.name.begins_with("HandleZ") or (collider.get_parent() and collider.get_parent().name.begins_with("HandleZ")):      
+			var handle_node = collider if collider.name.begins_with("HandleZ") else collider.get_parent()      
+			start_rotation(handle_node.name)  
+			return  # ← AGREGAR ESTO  
 			  
-			# Actualizar variables de doble clic  
-			last_clicked_block = block  
-			last_click_time = current_time  
-		else:    
+		# PRIMERO verificar si es un handle de escalado      
+		if collider.name.begins_with("HandleX") or (collider.get_parent() and collider.get_parent().name.begins_with("HandleX")):      
+			var handle_node = collider if collider.name.begins_with("HandleX") else collider.get_parent()      
+			start_scaling(handle_node.name, raycast.get_collision_point())  
+			return  # ← AGREGAR ESTO TAMBIÉN  
+		elif collider.get_parent().has_method("is_block"):      
+			var block = collider.get_parent()      
+			if selected_block == block:      
+				# Verificar doble clic    
+				if last_clicked_block == block and (current_time - last_click_time) < double_click_threshold:    
+					deselect_block()    
+				else:    
+					start_drag(raycast.get_collision_point())      
+			else:      
+				select_block(block)      
+				
+			# Actualizar variables de doble clic    
+			last_clicked_block = block    
+			last_click_time = current_time    
+		else:      
 			place_new_block(raycast.get_collision_point())
 
 #FUNCIONES PARA SELECCIONAR BLOQUE
-func select_block(block):  
-	# Deseleccionar bloque anterior  
-	if selected_block != null:  
-		var mesh_instance = selected_block.get_node("StaticBody/MeshInstance")  
-		mesh_instance.material_override = normal_material  
-		# Remover handles anteriores  
-		if current_handles != null:  
-			current_handles.queue_free()  
-	  
-	# Seleccionar nuevo bloque  
-	selected_block = block  
-	var mesh_instance = block.get_node("StaticBody/MeshInstance")  
-	mesh_instance.material_override = selected_material  
-	  
-	# Crear handles de escalado  
-	show_scale_handles()
-	# Mostrar botón de eliminación  
-	delete_button.visible = true
-	
-func deselect_block():  
-	if selected_block != null:  
+func select_block(block):    
+	# Deseleccionar bloque anterior    
+	if selected_block != null:    
 		var mesh_instance = selected_block.get_node("StaticBody/MeshInstance")    
 		mesh_instance.material_override = normal_material    
-		# Remover handles  
+		# Remover handles anteriores    
 		if current_handles != null:    
 			current_handles.queue_free()  
+		# Remover handles de rotación anteriores  
+		if current_rotation_handles != null:  
+			current_rotation_handles.queue_free()  
+		
+	# Seleccionar nuevo bloque    
+	selected_block = block    
+	var mesh_instance = block.get_node("StaticBody/MeshInstance")    
+	mesh_instance.material_override = selected_material    
+		
+	# Crear handles de escalado    
+	show_scale_handles()  
+	# Crear handles de rotación  
+	show_rotation_handles()  
+	# Mostrar botón de eliminación    
+	delete_button.visible = true
+	
+func deselect_block():    
+	if selected_block != null:    
+		var mesh_instance = selected_block.get_node("StaticBody/MeshInstance")      
+		mesh_instance.material_override = normal_material      
+		# Remover handles de escalado  
+		if current_handles != null:      
+			current_handles.queue_free()    
 			current_handles = null  
-		selected_block = null
-		# Ocultar botón de eliminación  
+		# Remover handles de rotación  
+		if current_rotation_handles != null:  
+			current_rotation_handles.queue_free()  
+			current_rotation_handles = null  
+		selected_block = null  
+		# Ocultar botón de eliminación    
 		delete_button.visible = false
 
 func _on_delete_button_pressed():  
@@ -276,8 +298,54 @@ func update_handles_position():
 			
 		handle_x.global_transform.origin = cube_pos + Vector3(distance_x, 2, 0)     
 		handle_x_neg.global_transform.origin = cube_pos + Vector3(-distance_x , 1.8, 0)
+		
+	#Funciones para la rotacion
+func start_rotation(handle_name):  
+	if selected_block == null:  
+		return  
+	  
+	# Rotar 90 grados hacia la derecha en el eje Y  
+	selected_block.rotation_degrees.y += 90  
+	  
+	# Actualizar posición de handles después de rotar  
+	update_rotation_handles_position() 
+	update_handles_position()
+	
+func update_rotation_handles_position():  
+	if current_rotation_handles != null and selected_block != null:  
+		var handle_z_pos = current_rotation_handles.get_node("HandleZPos")  
+		var handle_z_neg = current_rotation_handles.get_node("HandleZNeg")  
+		  
+		var cube_pos = selected_block.global_transform.origin  
+		var distance_z = selected_block.scale.z * 0.5 + 0.5  
+		  
+		handle_z_pos.global_transform.origin = cube_pos + Vector3(0, 2, distance_z)  
+		handle_z_neg.global_transform.origin = cube_pos + Vector3(0, 2, -distance_z)  
+  
+func finish_rotation():  
+	if selected_block != null:  
+		# Rotar 90 grados hacia la derecha  
+		selected_block.rotation_degrees.y += 90  
+	is_rotating = false  
+	rotation_axis = ""
 
+func show_rotation_handles():  
+	if selected_block == null:  
+		return  
+	  
+	current_rotation_handles = rotation_handles_scene.instance()  
+	add_child(current_rotation_handles)  
+	  
+	var cube_pos = selected_block.global_transform.origin  
+	var distance_z = selected_block.scale.z * 0.5 + 0.5  
+	  
+	var handle_z_pos = current_rotation_handles.get_node("HandleZPos")  
+	var handle_z_neg = current_rotation_handles.get_node("HandleZNeg")  
+	  
+	handle_z_pos.global_transform.origin = cube_pos + Vector3(0, 2, distance_z)  
+	handle_z_neg.global_transform.origin = cube_pos + Vector3(0, 2, -distance_z)
 # warning-ignore:unused_argument
+
 #func _process(delta):
 #	if raycast.is_colliding():
 #		var collider = raycast.get_collider()

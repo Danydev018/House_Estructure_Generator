@@ -1,13 +1,15 @@
 [gd_scene load_steps=6 format=2]
 
 [ext_resource path="res://Scripts/Block.gd" type="Script" id=1]
-[ext_resource path="res://assets/pexels-dmitry-demidov-515774-3800449.jpg" type="Texture" id=2]
+[ext_resource path="res://assets/texturaChevere.jpg" type="Texture" id=2]
 
 [sub_resource type="CubeMesh" id=3]
 
 [sub_resource type="ORMSpatialMaterial" id=4]
-albedo_color = Color( 0.592157, 0.298039, 0.137255, 1 )
+albedo_color = Color( 0.603922, 0.603922, 0.603922, 1 )
 albedo_texture = ExtResource( 2 )
+uv1_triplanar = true
+uv1_triplanar_sharpness = 1.0
 
 [sub_resource type="BoxShape" id=2]
 
