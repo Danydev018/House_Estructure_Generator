@@ -36,6 +36,12 @@ var rotation_handles_scene = preload("res://Scenes/RotationHandles.tscn")
 var current_rotation_handles = null  
 var is_rotating = false  
 var rotation_axis = ""
+var rotation_start_angle = 0.0
+var rotation_start_mouse = Vector2.ZERO
+
+# Variables para distinguir clic de arrastre en rotación
+var rotation_mouse_down_pos = Vector2.ZERO
+var rotation_click_threshold = 8.0 # píxeles
 
 
 # Agregar después de las variables existentes  
@@ -63,12 +69,22 @@ func _input(event):
 					finish_drag()  
 				elif is_scaling:  
 					finish_scaling()  
-	  
+				elif is_rotating:  
+					# Solo rotación de 90 grados
+					if rotation_axis == "HandleZPos":
+						selected_block.rotation_degrees.y += 90
+					elif rotation_axis == "HandleZNeg":
+						selected_block.rotation_degrees.y -= 90
+					update_rotation_handles_position()
+					update_handles_position()
+					finish_rotation()
 	elif event is InputEventMouseMotion:  
 		if is_dragging:  
 			update_drag_position()  
 		elif is_scaling:  
-			update_scaling()
+			update_scaling()  
+		elif is_rotating:  
+			update_rotation()
 
 
   
@@ -80,16 +96,16 @@ func handle_left_click():
 		var collider = raycast.get_collider()      
 		var current_time = OS.get_ticks_msec() / 1000.0    
 		  
+		# Handles de rotación
 		if collider.name.begins_with("HandleZ") or (collider.get_parent() and collider.get_parent().name.begins_with("HandleZ")):      
 			var handle_node = collider if collider.name.begins_with("HandleZ") else collider.get_parent()      
 			start_rotation(handle_node.name)  
-			return  # ← AGREGAR ESTO  
-			  
-		# PRIMERO verificar si es un handle de escalado      
+			return
+		# Handles de escalado
 		if collider.name.begins_with("HandleX") or (collider.get_parent() and collider.get_parent().name.begins_with("HandleX")):      
 			var handle_node = collider if collider.name.begins_with("HandleX") else collider.get_parent()      
 			start_scaling(handle_node.name, raycast.get_collision_point())  
-			return  # ← AGREGAR ESTO TAMBIÉN  
+			return
 		elif collider.get_parent().has_method("is_block"):      
 			var block = collider.get_parent()      
 			if selected_block == block:      
@@ -237,17 +253,30 @@ func is_valid_position(position):
 func show_scale_handles():    
 	if selected_block == null:    
 		return    
-		
+	
 	current_handles = scale_handles_scene.instance()    
 	add_child(current_handles)    
-		
+	
 	var handle_x = current_handles.get_node("HandleX")    
 	var handle_x_neg = current_handles.get_node("HandleXNeg")    
-		
-	var cube_pos = selected_block.global_transform.origin    
-	handle_x.global_transform.origin = cube_pos + Vector3(selected_block.scale.x * 1.1, 2, 0)    
-	handle_x_neg.global_transform.origin = cube_pos + Vector3(-selected_block.scale.x * 1.2, 1.8, 0)
- 
+	
+	var cube_pos = selected_block.global_transform.origin
+	var scale = selected_block.scale
+	var up_vec = selected_block.global_transform.basis.y
+	var margin = 0.0
+
+	# Offset para X positivo (constante)
+	var offset_x = Vector3((scale.x * 0.5) + margin, 0, 0)
+	offset_x = selected_block.global_transform.basis.xform(offset_x)
+	handle_x.global_transform.origin = cube_pos + offset_x
+	handle_x.look_at(cube_pos + selected_block.global_transform.basis.x, up_vec)
+
+	# Offset para X negativo (constante)
+	var offset_x_neg = Vector3((-scale.x * 0.5) - margin, 0, 0)
+	offset_x_neg = selected_block.global_transform.basis.xform(offset_x_neg)
+	handle_x_neg.global_transform.origin = cube_pos + offset_x_neg
+	handle_x_neg.look_at(cube_pos - selected_block.global_transform.basis.x, up_vec)
+
 func hide_scale_handles():  
 	if current_handles != null:  
 		current_handles.queue_free()  
@@ -266,20 +295,18 @@ func start_scaling(handle_name, collision_point):
 func update_scaling():    
 	if not is_scaling or selected_block == null:    
 		return    
-		
-# warning-ignore:shadowed_variable
 	var raycast = $Camera/RayCast    
 	if raycast.is_colliding():    
 		var current_position = raycast.get_collision_point()    
 		var delta = current_position - scale_start_position    
-			
+		var local_delta = selected_block.global_transform.basis.xform_inv(delta)
+		var sensitivity = 0.2 # Menor sensibilidad
 		if scale_axis == "x_pos":    
-			var scale_change = delta.x * 1  
+			var scale_change = local_delta.x * sensitivity
 			selected_block.scale.x = clamp(original_scale.x + scale_change, 0.5, 30.0)    
 		elif scale_axis == "x_neg":    
-			var scale_change = -delta.x * 1  # Invertir dirección  
+			var scale_change = -local_delta.x * sensitivity  # Invertir dirección    
 			selected_block.scale.x = clamp(original_scale.x + scale_change, 0.5, 30.0)    
-			
 		update_handles_position()
 
   
@@ -291,59 +318,76 @@ func update_handles_position():
 	if current_handles != null and selected_block != null:      
 		var handle_x = current_handles.get_node("HandleX")      
 		var handle_x_neg = current_handles.get_node("HandleXNeg")      
-			  
-		var cube_pos = selected_block.global_transform.origin      
-		var dynamic_margin_x = selected_block.scale.x * 0.5 + 0.3   
-		var distance_x = selected_block.scale.x * 0.5 + dynamic_margin_x    
-			
-		handle_x.global_transform.origin = cube_pos + Vector3(distance_x, 2, 0)     
-		handle_x_neg.global_transform.origin = cube_pos + Vector3(-distance_x , 1.8, 0)
 		
+		var cube_pos = selected_block.global_transform.origin      
+		var scale = selected_block.scale
+		var up_vec = selected_block.global_transform.basis.y
+		var margin = 0.0
+		# Offset para X positivo (constante)
+		var offset_x = Vector3((scale.x * 0.5) + margin, 0, 0)
+		offset_x = selected_block.global_transform.basis.xform(offset_x)
+		handle_x.global_transform.origin = cube_pos + offset_x
+		handle_x.look_at(cube_pos + selected_block.global_transform.basis.x, up_vec)
+		# Offset para X negativo (constante)
+		var offset_x_neg = Vector3((-scale.x * 0.5) - margin, 0, 0)
+		offset_x_neg = selected_block.global_transform.basis.xform(offset_x_neg)
+		handle_x_neg.global_transform.origin = cube_pos + offset_x_neg
+		handle_x_neg.look_at(cube_pos - selected_block.global_transform.basis.x, up_vec)
+
 	#Funciones para la rotacion
 func start_rotation(handle_name):  
 	if selected_block == null:  
 		return  
-	  
-	# Rotar 90 grados hacia la derecha en el eje Y  
-	selected_block.rotation_degrees.y += 90  
-	  
-	# Actualizar posición de handles después de rotar  
-	update_rotation_handles_position() 
-	update_handles_position()
-	
-func update_rotation_handles_position():  
-	if current_rotation_handles != null and selected_block != null:  
-		var handle_z_pos = current_rotation_handles.get_node("HandleZPos")  
-		var handle_z_neg = current_rotation_handles.get_node("HandleZNeg")  
-		  
-		var cube_pos = selected_block.global_transform.origin  
-		var distance_z = selected_block.scale.z * 0.5 + 0.5  
-		  
-		handle_z_pos.global_transform.origin = cube_pos + Vector3(0, 2, distance_z)  
-		handle_z_neg.global_transform.origin = cube_pos + Vector3(0, 2, -distance_z)  
-  
+	is_rotating = true
+	rotation_axis = handle_name
+
+func update_rotation():
+	pass
+
 func finish_rotation():  
-	if selected_block != null:  
-		# Rotar 90 grados hacia la derecha  
-		selected_block.rotation_degrees.y += 90  
 	is_rotating = false  
 	rotation_axis = ""
 
 func show_rotation_handles():  
 	if selected_block == null:  
 		return  
-	  
 	current_rotation_handles = rotation_handles_scene.instance()  
 	add_child(current_rotation_handles)  
-	  
 	var cube_pos = selected_block.global_transform.origin  
-	var distance_z = selected_block.scale.z * 0.5 + 0.5  
-	  
+	var scale = selected_block.scale
+	var up_vec = selected_block.global_transform.basis.y
 	var handle_z_pos = current_rotation_handles.get_node("HandleZPos")  
 	var handle_z_neg = current_rotation_handles.get_node("HandleZNeg")  
-	  
-	handle_z_pos.global_transform.origin = cube_pos + Vector3(0, 2, distance_z)  
-	handle_z_neg.global_transform.origin = cube_pos + Vector3(0, 2, -distance_z)
+	# Offset para Z positivo (más cercano)
+	var margin = 0.0
+	var offset_z = Vector3(0, 0, scale.z * 0.5 + margin)
+	offset_z = selected_block.global_transform.basis.xform(offset_z)
+	handle_z_pos.global_transform.origin = cube_pos + offset_z
+	handle_z_pos.look_at(cube_pos + selected_block.global_transform.basis.z, up_vec)
+	# Offset para Z negativo (más cercano)
+	var offset_z_neg = Vector3(0, 0, -scale.z * 0.5 - margin)
+	offset_z_neg = selected_block.global_transform.basis.xform(offset_z_neg)
+	handle_z_neg.global_transform.origin = cube_pos + offset_z_neg
+	handle_z_neg.look_at(cube_pos - selected_block.global_transform.basis.z, up_vec)
+
+func update_rotation_handles_position():
+	if current_rotation_handles != null and selected_block != null:
+		var handle_z_pos = current_rotation_handles.get_node("HandleZPos")
+		var handle_z_neg = current_rotation_handles.get_node("HandleZNeg")
+		var cube_pos = selected_block.global_transform.origin
+		var scale = selected_block.scale
+		var up_vec = selected_block.global_transform.basis.y
+		var margin = 0.0
+		# Offset para Z positivo (más cercano)
+		var offset_z = Vector3(0, 0, scale.z * 0.5 + margin)
+		offset_z = selected_block.global_transform.basis.xform(offset_z)
+		handle_z_pos.global_transform.origin = cube_pos + offset_z
+		handle_z_pos.look_at(cube_pos + selected_block.global_transform.basis.z, up_vec)
+		# Offset para Z negativo (más cercano)
+		var offset_z_neg = Vector3(0, 0, -scale.z * 0.5 - margin)
+		offset_z_neg = selected_block.global_transform.basis.xform(offset_z_neg)
+		handle_z_neg.global_transform.origin = cube_pos + offset_z_neg
+		handle_z_neg.look_at(cube_pos - selected_block.global_transform.basis.z, up_vec)
 # warning-ignore:unused_argument
 
 #func _process(delta):
