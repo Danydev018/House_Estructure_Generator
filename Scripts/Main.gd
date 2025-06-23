@@ -30,6 +30,7 @@ var rotation_axis = ""
 # Variables de UI  
 onready var delete_button = $CanvasLayer/DeleteButton  
 onready var scale_slider = $CanvasLayer/ScaleSlider  
+onready var create_button = $CanvasLayer/CreateButton
 	  
 func _ready():  
 	if raycast == null:  
@@ -43,6 +44,7 @@ func _ready():
 	# Conectar controles de UI  
 	delete_button.connect("pressed", self, "_on_delete_button_pressed")  
 	scale_slider.connect("value_changed", self, "_on_scale_slider_changed")  
+	create_button.connect("pressed", self, "_on_create_button_pressed")
   
 func _input(event):    
 	if event is InputEventMouseButton:    
@@ -91,8 +93,8 @@ func handle_left_click():
 			# Actualizar variables de doble clic      
 			last_clicked_block = block      
 			last_click_time = current_time      
-		else:        
-			place_new_block(raycast.get_collision_point())  
+#		else:        
+#			place_new_block(raycast.get_collision_point())  
   
 # FUNCIONES PARA SELECCIONAR BLOQUE  
 func select_block(block):      
@@ -141,21 +143,39 @@ func _on_delete_button_pressed():
 	if selected_block != null:    
 		delete_block(selected_block)    
 		delete_button.visible = false  
+
+func _on_create_button_pressed():    
+	# Crear bloque en el centro de la vista de la cámara  
+	var camera = $Camera  
+	var screen_center = get_viewport().size / 2  
+	var from = camera.project_ray_origin(screen_center)  
+	var to = from + camera.project_ray_normal(screen_center) * 100  
 	  
-func place_new_block(collision_point):        
-	var point = collision_point.snapped(Vector3.ONE)      
-	point.y += 0     
+	# Usar raycast para encontrar posición en el suelo  
+	var space_state = get_world().direct_space_state  
+	var result = space_state.intersect_ray(from, to)  
+	  
+	if result:  
+		place_new_block(result.position)  
+	else:  
+		# Si no hay colisión, usar posición frente a la cámara  
+		var forward_position = camera.global_transform.origin + camera.global_transform.basis.z * -5  
+		place_new_block(forward_position)
+	  
+func place_new_block(position):        
+	var point = position.snapped(Vector3.ONE)      
+	point.y = max(point.y, 1)  # Asegurar que esté sobre el suelo  
 	var block = block_scene.instance()        
 	block.translation = point        
 		
-	# Establecer dimensiones de pared (ejemplo: ancho=3, altura=2, grosor=0.5)    
-	block.scale = Vector3(3.0, 2.0, 0.5)  # X=ancho, Y=altura, Z=grosor    
+	# Establecer dimensiones de pared  
+	block.scale = Vector3(3.0, 2.0, 0.5)  
 		
 	$BlocksContainer.add_child(block)        
 		
 	var mesh_instance = block.get_node("StaticBody/MeshInstance")        
-	mesh_instance.material_override = normal_material  
-  
+	mesh_instance.material_override = normal_material
+	
 func delete_block(block):    
 	if block == null:    
 		return    
