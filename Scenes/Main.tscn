@@ -12,7 +12,7 @@
 [sub_resource type="PlaneMesh" id=2]
 
 [sub_resource type="ORMSpatialMaterial" id=4]
-albedo_color = Color( 0.745098, 0.72549, 0.72549, 1 )
+albedo_color = Color( 0.537255, 0.517647, 0.517647, 1 )
 albedo_texture = ExtResource( 6 )
 uv1_triplanar = true
 uv1_triplanar_sharpness = 1.0
@@ -53,7 +53,7 @@ shadow_offset = Vector2( -20, -30 )
 script = ExtResource( 2 )
 
 [node name="Camera" type="Camera" parent="."]
-transform = Transform( 1, 0, 0, 0, 0.707107, 0.707107, 0, -0.707107, 0.707107, 0, 10, 10 )
+transform = Transform( 1, 0, 0, 0, 0.707107, 0.707107, 0, -0.707107, 0.707107, 0, 13.9772, 13.8784 )
 current = true
 script = ExtResource( 1 )
 

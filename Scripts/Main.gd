@@ -38,13 +38,31 @@ func _ready():
 	else:  
 		print("✅ RayCast listo.")  
 		  
-	selected_material = SpatialMaterial.new()    
-	selected_material.albedo_color = Color(Color.green, 0.2)   
+	# Cargar el material original  
+	var original_material = preload("res://Materials/Block.tres")  
+	# Crear una copia para selección con brillo  
+	selected_material = original_material.duplicate()  
+	selected_material.emission_enabled = true  
+	selected_material.emission = Color(0.5, 0.5, 0.5)  
+	# Ajustar intensidad según la plataforma  
+	if OS.get_name() == "Android":  
+		selected_material.emission_energy = 0.5  # Menos intenso en Android  
+	else:  
+		selected_material.emission_energy = 0.5  # Intensidad normal en PC
 	  
 	# Conectar controles de UI  
 	delete_button.connect("pressed", self, "_on_delete_button_pressed")  
 	scale_slider.connect("value_changed", self, "_on_scale_slider_changed")  
 	create_button.connect("pressed", self, "_on_create_button_pressed")
+	
+	# Crear bloque de prueba automáticamente  
+	var test_position = Vector3(0, 1, 0)  # Posición en el centro  
+	var test_block = block_scene.instance()  
+	test_block.translation = test_position  
+	test_block.scale = Vector3(3.0, 2.0, 0.5)  # Dimensiones de pared  
+	blocks_container.add_child(test_block)  
+	# Seleccionar automáticamente el bloque de prueba  
+	select_block(test_block)
   
 func _input(event):      
 	if event is InputEventMouseButton:      
@@ -212,26 +230,30 @@ func delete_block(block):
 	last_clicked_block = null  
   
 # FUNCIONES DE ARRASTRE  
-func start_drag(collision_point):    
-	is_dragging = true      
-	original_position = selected_block.translation      
-	# Calcular offset considerando la altura del cubo    
-	var snapped_point = collision_point.snapped(Vector3.ONE)    
-	snapped_point.y += 0  # Añadir offset de altura    
-	drag_offset = selected_block.translation - snapped_point    
-		
-	# Cambiar material para indicar arrastre    
-	var drag_material = SpatialMaterial.new()    
-	drag_material.albedo_color = Color.cyan   
-	drag_material.emission_enabled = true    
-	drag_material.emission = Color.cyan * 0.5    
-	drag_material.flags_transparent = true    
-	drag_material.albedo_color.a = 0.7    
-		
-	var mesh_instance = selected_block.get_node("StaticBody/MeshInstance")    
+func start_drag(collision_point):      
+	is_dragging = true        
+	original_position = selected_block.translation        
+	  
+	# Calcular offset solo en X y Z, ignorar Y completamente  
+	var snapped_point = collision_point.snapped(Vector3.ONE)      
+	snapped_point.y = selected_block.translation.y  # Forzar misma altura  
+	drag_offset = selected_block.translation - snapped_point      
+	drag_offset.y = 0  # Eliminar cualquier componente Y del offset      
+		  
+	# Cambiar material para indicar arrastre      
+	var drag_material = SpatialMaterial.new()      
+	drag_material.albedo_color = Color.cyan     
+	drag_material.emission_enabled = true      
+	drag_material.emission = Color.cyan * 0.5      
+	drag_material.flags_transparent = true      
+	drag_material.albedo_color.a = 0.7      
+		  
+	var mesh_instance = selected_block.get_node("StaticBody/MeshInstance")      
 	mesh_instance.material_override = drag_material    
 	
 func update_drag_position(touch_position = null):        
+	var new_position  
+	  
 	if touch_position != null:  
 		var camera = $Camera  
 		var from = camera.project_ray_origin(touch_position)  
@@ -241,16 +263,19 @@ func update_drag_position(touch_position = null):
 		var result = space_state.intersect_ray(from, to)  
 		  
 		if result:  
-			var new_position = result.position.snapped(Vector3.ONE) + drag_offset      
-			new_position.y = max(new_position.y, 0)  
-			selected_block.translation = new_position  
+			new_position = result.position.snapped(Vector3.ONE) + drag_offset      
+		else:  
+			return  # No hacer nada si no hay colisión  
 	else:  
-		# Usar raycast tradicional como fallback  
 		var raycast = $Camera/RayCast        
 		if raycast.is_colliding():        
-			var new_position = raycast.get_collision_point().snapped(Vector3.ONE) + drag_offset      
-			new_position.y = max(new_position.y, 0)  
-			selected_block.translation = new_position  
+			new_position = raycast.get_collision_point().snapped(Vector3.ONE) + drag_offset      
+		else:  
+			return  
+	  
+	# Mantener SIEMPRE la altura original, sin excepciones  
+	new_position.y = original_position.y  
+	selected_block.translation = new_position
 		  
 func finish_drag():    
 	is_dragging = false    
