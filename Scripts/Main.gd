@@ -324,3 +324,26 @@ func update_rotation_handles_position():
 		offset_z_neg = selected_block.global_transform.basis.xform(offset_z_neg)  
 		handle_z_neg.global_transform.origin = cube_pos + offset_z_neg  
 		handle_z_neg.look_at(cube_pos - selected_block.global_transform.basis.z, up_vec)
+
+
+func _on_TextureButton_button_up():
+	Input.action_release("ui_up")
+
+
+func _on_TextureButton_button_down():
+	Input.action_press("ui_up")
+
+# Botones Derecha
+func _on_right_button_down():
+	Input.action_press("ui_right")
+
+func _on_right_button_up():
+	Input.action_release("ui_right")
+
+# Botones Izquierda
+func _on_left_button_down():
+	Input.action_press("ui_left")
+
+
+func _on_left_button_up():
+	Input.action_release("ui_left")
