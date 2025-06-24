@@ -38,13 +38,31 @@ func _ready():
 	else:  
 		print("✅ RayCast listo.")  
 		  
-	selected_material = SpatialMaterial.new()    
-	selected_material.albedo_color = Color(Color.green, 0.2)   
+	# Cargar el material original  
+	var original_material = preload("res://Materials/Block.tres")  
+	# Crear una copia para selección con brillo  
+	selected_material = original_material.duplicate()  
+	selected_material.emission_enabled = true  
+	selected_material.emission = Color(0.5, 0.5, 0.5)  
+	# Ajustar intensidad según la plataforma  
+	if OS.get_name() == "Android":  
+		selected_material.emission_energy = 0.5  # Menos intenso en Android  
+	else:  
+		selected_material.emission_energy = 0.5  # Intensidad normal en PC
 	  
 	# Conectar controles de UI  
 	delete_button.connect("pressed", self, "_on_delete_button_pressed")  
 	scale_slider.connect("value_changed", self, "_on_scale_slider_changed")  
 	create_button.connect("pressed", self, "_on_create_button_pressed")
+	
+	# Crear bloque de prueba automáticamente  
+	var test_position = Vector3(0, 1, 0)  # Posición en el centro  
+	var test_block = block_scene.instance()  
+	test_block.translation = test_position  
+	test_block.scale = Vector3(3.0, 2.0, 0.5)  # Dimensiones de pared  
+	blocks_container.add_child(test_block)  
+	# Seleccionar automáticamente el bloque de prueba  
+	select_block(test_block)
   
 func _input(event):      
 	if event is InputEventMouseButton:      
