@@ -25,9 +25,21 @@ var double_click_threshold = 0.3  # 300ms para doble clic
 onready var delete_button = $CanvasLayer/DeleteButton    
 onready var scale_slider = $CanvasLayer/ScaleSlider    
 onready var create_button = $CanvasLayer/CreateButton  
-onready var rotate_button = $CanvasLayer/RotateButton  
+onready var rotate_button = $CanvasLayer/RotateButton
+
+var auth_scene = preload("res://Scenes/Auth.tscn")
+
+# Managers de Supabase
+onready var supabase_manager = $SupabaseManager
+onready var scene_state_manager = $SceneStateManager
+
+
+# Variables de guardado/carga
+var auto_save_timer: Timer
+var last_save_time = 0.0
+var save_interval = 30.0  # Auto-guardar cada 30 segundos
   
-func _ready():    
+func _ready():
 	if raycast == null:    
 		print("❌ RayCast no encontrado.")    
 	else:    
@@ -60,13 +72,16 @@ func _ready():
 	# Seleccionar automáticamente el bloque de prueba    
 	select_block(test_block)  
 	
-func _input(event):        
+	# Inicializar Supabase y autenticación
+	setup_auth_and_supabase()
+
+func _input(event):
 	if event is InputEventMouseButton:        
 		if event.button_index == BUTTON_LEFT:        
 			if event.pressed:  
 				# Verificar si el clic fue en un elemento de UI  
-				if is_click_on_ui(event.position):  
-					return  # No procesar interacción con bloques  
+				if get_node_or_null("AuthUI") != null or is_click_on_ui(event.position):  
+					return  # No procesar interacción 3D si la UI de Auth está visible
 					  
 				# En PC, no pasar posición para usar el raycast tradicional  
 				if OS.get_name() == "Android":  
@@ -92,7 +107,13 @@ func is_click_on_ui(click_position: Vector2) -> bool:
 	for element in ui_elements:  
 		if element.visible and element.get_global_rect().has_point(click_position):  
 			return true  
-	  
+	
+	# Comprobar si la UI de autenticación está activa
+	var auth_ui = get_node_or_null("AuthUI")
+	if auth_ui and auth_ui.visible:
+		if auth_ui.get_global_rect().has_point(click_position):
+			return true
+			
 	return false
 	
 func handle_left_click(touch_position = null):            
@@ -343,3 +364,124 @@ func _on_down_button_down():
   
 func _on_down_button_up():  
 	Input.action_release("ui_down")
+
+# ===== FUNCIONES DE SUPABASE Y AUTENTICACIÓN =====
+
+func setup_auth_and_supabase():
+	print("🔐 Iniciando configuración de autenticación...")
+	
+	# Conectar señales del SupabaseManager
+	supabase_manager.connect("scene_saved", self, "_on_scene_saved")
+	supabase_manager.connect("scene_loaded", self, "_on_scene_loaded")
+	supabase_manager.connect("error_occurred", self, "_on_supabase_error")
+
+	# Instanciar y mostrar la UI de autenticación
+	var auth_instance = auth_scene.instance()
+	auth_instance.name = "AuthUI"
+	add_child(auth_instance)
+	
+	# Conectar la señal de login exitoso
+	auth_instance.connect("login_successful", self, "_on_login_successful")
+
+func _on_login_successful():
+	print("🎉 Login exitoso! Procediendo a cargar la escena.")
+	
+	# Ocultar y eliminar la UI de autenticación
+	var auth_ui = get_node_or_null("AuthUI")
+	if auth_ui:
+		auth_ui.queue_free()
+	
+	# Configurar auto-guardado y cargar datos del usuario
+	setup_auto_save()
+	load_scene_from_database()
+
+# Configuración inicial de Supabase
+func setup_supabase():
+	print("🔧 Configurando Supabase...")
+	
+	# Conectar señales del SupabaseManager
+	supabase_manager.connect("scene_saved", self, "_on_scene_saved")
+	supabase_manager.connect("scene_loaded", self, "_on_scene_loaded")
+	supabase_manager.connect("error_occurred", self, "_on_supabase_error")
+	
+	# Configurar auto-guardado
+	setup_auto_save()
+	
+	# Cargar estado guardado al iniciar
+	load_scene_from_database()
+
+func setup_auto_save():
+	# Crear timer para auto-guardado
+	auto_save_timer = Timer.new()
+	auto_save_timer.connect("timeout", self, "_on_auto_save_timeout")
+	auto_save_timer.wait_time = save_interval
+	auto_save_timer.autostart = true
+	add_child(auto_save_timer)
+	print("⏰ Auto-guardado configurado cada ", save_interval, " segundos")
+
+# Guardar estado actual en Supabase
+func save_scene_to_database():
+	print("💾 Guardando escena en base de datos...")
+	var scene_data = scene_state_manager.capture_scene_state()
+	supabase_manager.save_scene_state(scene_data)
+
+func load_scene_from_database():
+	print("📥 Cargando escena desde base de datos...")
+	supabase_manager.load_scene_state()
+
+# Callbacks de Supabase
+func _on_scene_saved(success: bool):
+	if success:
+		print("✅ Escena guardada exitosamente")
+		last_save_time = OS.get_ticks_msec() / 1000.0
+		# Aquí podrías mostrar una notificación en la UI
+	else:
+		print("❌ Error al guardar escena")
+
+func _on_scene_loaded(scene_data: Dictionary):
+	if not scene_data.empty():
+		print("📦 Datos cargados, restaurando escena...")
+		# Primero limpiar el bloque de prueba si existe
+		clear_test_blocks()
+		# Restaurar escena desde datos
+		scene_state_manager.restore_scene_state(scene_data)
+	else:
+		print("ℹ️ No hay datos guardados, iniciando con escena por defecto")
+
+func _on_supabase_error(error_message: String):
+	print("❌ Error de Supabase: ", error_message)
+	# Aquí podrías mostrar el error en la UI
+
+func _on_auto_save_timeout():
+	# Guardar automáticamente si han pasado algunos segundos desde el último cambio
+	var current_time = OS.get_ticks_msec() / 1000.0
+	if current_time - last_save_time > 5.0:  # Si han pasado 5+ segundos sin guardar
+		save_scene_to_database()
+
+func _on_scene_restored():
+	# Callback llamado cuando se restaura la escena
+	print("🎯 Escena restaurada completamente")
+	# Deseleccionar cualquier bloque seleccionado
+	deselect_block()
+
+func clear_test_blocks():
+	# Limpiar bloques de prueba antes de cargar datos guardados
+	for child in blocks_container.get_children():
+		if child.has_method("is_block"):
+			child.queue_free()
+
+# Funciones manuales de guardado/carga (para botones)
+func manual_save():
+	print("🖱️ Guardado manual iniciado")
+	save_scene_to_database()
+
+func manual_load():
+	print("🖱️ Carga manual iniciada")
+	load_scene_from_database()
+
+# Función para obtener estadísticas
+func get_project_stats():
+	var stats = scene_state_manager.get_scene_stats()
+	print("📊 Estadísticas del proyecto:")
+	print("   Bloques totales: ", stats.total_blocks)
+	print("   Volumen total: ", stats.total_volume)
