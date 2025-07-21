@@ -1,0 +1,185 @@
+[gd_scene load_steps=18 format=2]
+
+[ext_resource path="res://assets/basura.png" type="Texture" id=1]
+[ext_resource path="res://Materials/DeleteButton.tres" type="StyleBox" id=2]
+[ext_resource path="res://assets/piso fino.jpg" type="Texture" id=3]
+[ext_resource path="res://assets/anadir.png" type="Texture" id=4]
+[ext_resource path="res://Entities/Camera/Camera.tscn" type="PackedScene" id=5]
+[ext_resource path="res://Materials/CreateButton.tres" type="StyleBox" id=6]
+[ext_resource path="res://Materials/Button.tres" type="Theme" id=7]
+[ext_resource path="res://UI/ModeToggle/ModeToggle.gd" type="Script" id=8]
+[ext_resource path="res://Materials/RotateButton.tres" type="StyleBox" id=9]
+[ext_resource path="res://assets/gira-a-la-derecha.png" type="Texture" id=10]
+[ext_resource path="res://assets/kindpng_4853972.png" type="Texture" id=11]
+[ext_resource path="res://UI/ModeToggle/ModeToggle.gd" type="Script" id=12]
+
+[sub_resource type="PlaneMesh" id=1]
+
+[sub_resource type="ORMSpatialMaterial" id=2]
+albedo_color = Color( 0.537255, 0.517647, 0.517647, 1 )
+albedo_texture = ExtResource( 3 )
+uv1_triplanar = true
+uv1_triplanar_sharpness = 1.0
+
+[sub_resource type="BoxShape" id=3]
+
+[sub_resource type="GDScript" id=4]
+script/source = "extends CanvasLayer
+
+func _ready():
+	var size = get_viewport().size
+	$Label.rect_position = size / 2 - $Label.rect_size / 2
+"
+
+[sub_resource type="Theme" id=5]
+
+[node name="CameraTest" type="Spatial"]
+
+[node name="Camera" parent="." instance=ExtResource( 5 )]
+
+[node name="Floor" type="StaticBody" parent="." groups=["floor"]]
+
+[node name="MeshInstance" type="MeshInstance" parent="Floor"]
+transform = Transform( 50, 0, 0, 0, 50, 0, 0, 0, 50, 0, 0, 0 )
+mesh = SubResource( 1 )
+skeleton = NodePath("../CollisionShape")
+material/0 = SubResource( 2 )
+
+[node name="CollisionShape" type="CollisionShape" parent="Floor"]
+transform = Transform( 50, 0, 0, 0, 0.5, 0, 0, 0, 50, 0, 0, 0 )
+shape = SubResource( 3 )
+
+[node name="HUD" type="CanvasLayer" parent="."]
+script = SubResource( 4 )
+
+[node name="Label" type="Label" parent="HUD"]
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+margin_left = -20.0
+margin_top = -7.0
+margin_right = 20.0
+margin_bottom = 7.0
+custom_colors/font_color = Color( 0, 0, 0, 1 )
+text = "+"
+align = 1
+
+[node name="DeleteButton" type="Button" parent="HUD"]
+modulate = Color( 0.976471, 0.0196078, 0.0196078, 1 )
+self_modulate = Color( 1, 0, 0, 1 )
+anchor_top = 1.0
+anchor_bottom = 1.0
+margin_left = 37.0
+margin_top = -170.0
+margin_right = 649.0
+margin_bottom = 442.0
+rect_scale = Vector2( 0.215063, 0.21195 )
+theme = ExtResource( 7 )
+custom_styles/hover = ExtResource( 2 )
+custom_styles/pressed = ExtResource( 2 )
+custom_styles/normal = ExtResource( 2 )
+icon = ExtResource( 1 )
+icon_align = 1
+
+[node name="ScaleSlider" type="HSlider" parent="HUD"]
+anchor_top = 0.5
+anchor_bottom = 0.5
+margin_left = 49.0
+margin_top = 300.0
+margin_right = 349.0
+margin_bottom = 320.0
+rect_rotation = -89.9698
+rect_scale = Vector2( 2.51994, 5.26139 )
+min_value = 0.5
+max_value = 30.0
+step = 0.001
+value = 3.0
+rounded = true
+
+[node name="CreateButton" type="Button" parent="HUD"]
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = -197.0
+margin_top = -32.0001
+margin_right = 355.0
+margin_bottom = 520.0
+rect_scale = Vector2( 0.222456, -0.240001 )
+theme = SubResource( 5 )
+custom_styles/hover = ExtResource( 6 )
+custom_styles/pressed = ExtResource( 6 )
+custom_styles/normal = ExtResource( 6 )
+icon = ExtResource( 4 )
+
+[node name="TextureButton" type="TextureButton" parent="HUD"]
+anchor_left = 1.0
+anchor_right = 1.0
+margin_left = -185.0
+margin_top = 532.0
+margin_right = 795.0
+margin_bottom = 1512.0
+rect_scale = Vector2( 0.1, 0.1 )
+texture_normal = ExtResource( 11 )
+
+[node name="right" type="TextureButton" parent="HUD"]
+anchor_left = 1.0
+anchor_right = 1.0
+margin_left = -17.0
+margin_top = 601.0
+margin_right = 963.0
+margin_bottom = 1581.0
+rect_rotation = 89.8018
+rect_scale = Vector2( 0.1, 0.1 )
+texture_normal = ExtResource( 11 )
+
+[node name="left" type="TextureButton" parent="HUD"]
+anchor_left = 1.0
+anchor_right = 1.0
+margin_left = -256.0
+margin_top = 696.0
+margin_right = 724.0
+margin_bottom = 1676.0
+rect_rotation = -88.5008
+rect_scale = Vector2( 0.0979077, 0.1 )
+texture_normal = ExtResource( 11 )
+
+[node name="down" type="TextureButton" parent="HUD"]
+anchor_right = 0.086
+margin_left = 2312.0
+margin_top = 768.0
+margin_right = 3373.0
+margin_bottom = 1748.0
+rect_rotation = -179.275
+rect_scale = Vector2( 0.1, 0.1 )
+texture_normal = ExtResource( 11 )
+
+[node name="RotateButton" type="Button" parent="HUD"]
+margin_left = 233.0
+margin_top = 920.0
+margin_right = 785.0
+margin_bottom = 1472.0
+rect_scale = Vector2( 0.228322, 0.208534 )
+custom_styles/hover = ExtResource( 9 )
+custom_styles/pressed = ExtResource( 9 )
+custom_styles/normal = ExtResource( 9 )
+icon = ExtResource( 10 )
+
+[node name="GameModeToggleButton" type="CheckButton" parent="HUD"]
+anchor_left = 0.921
+anchor_right = 0.995
+anchor_bottom = 0.067
+margin_left = -0.104065
+margin_right = 0.119934
+margin_bottom = -0.200001
+script = ExtResource( 12 )
+
+[node name="GameModeToggleButton2" type="CheckButton" parent="HUD"]
+anchor_left = 0.921
+anchor_right = 0.995
+anchor_bottom = 0.067
+margin_left = -0.104065
+margin_right = 0.119934
+margin_bottom = -0.200001
+script = ExtResource( 8 )

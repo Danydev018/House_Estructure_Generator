@@ -1,5 +1,5 @@
-# cON
-
+# Contexto para manejar el modo de juego en el editor de Godot.
+# Este script define dos modos: "BUILD" y "PLACE", y permite cambiar entre ellos
 extends Node
 
 signal game_mode_changed(game_mode)

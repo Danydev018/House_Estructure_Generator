@@ -20,17 +20,26 @@ var mouse_captured := true
 
 onready var tween := Tween.new()
 
-func _ready():
-	mouse_control.capture_mouse(self)
-	GameModeContext.connect("game_mode_changed", self, "_on_game_mode_changed")
-	
-	add_child(tween)
-
 func toggle_mouse_capture():
 	if mouse_captured:
 		mouse_control.release_mouse(self)
 	else:
 		mouse_control.capture_mouse(self)
+
+func get_raycast_collision():
+	var raycast = $RayCast
+	if raycast.is_colliding():
+		return {
+			"collider": raycast.get_collider(),
+			"position": raycast.get_collision_point()
+		}
+	return null
+
+func _ready():
+	mouse_control.capture_mouse(self)
+	GameModeContext.connect("game_mode_changed", self, "_on_game_mode_changed")
+	
+	add_child(tween)
 
 func _input(event):
 	if event is InputEventKey and event.pressed:
@@ -41,23 +50,22 @@ func _input(event):
 func _process(delta):
 	movement.process_movement(self, delta)
 
-# Actualiza la rotacion y posición de la camara basado en el modo de juego
 func _on_game_mode_changed(game_mode):
 	if game_mode == GameModeContext.MODE_BUILD:	
 		last_translation = translation
 		last_rotation = rotation_degrees
 
 		var target_translation = Vector3(translation.x, 10, translation.z)
-
 		var target_rotation = Vector3(-90, rotation_degrees.y, rotation_degrees.z)
 
 		tween.interpolate_property(self, "translation", translation, target_translation, 0.5, Tween.TRANS_SINE, Tween.EASE_IN_OUT)
 		tween.interpolate_property(self, "rotation_degrees", rotation_degrees, target_rotation, 0.5, Tween.TRANS_SINE, Tween.EASE_IN_OUT)
+
 		tween.start()
 	elif game_mode == GameModeContext.MODE_PLACE:
-		# Restaura la posición y rotación previas
 		tween.interpolate_property(self, "translation", translation, last_translation, 0.5, Tween.TRANS_SINE, Tween.EASE_IN_OUT)
 		tween.interpolate_property(self, "rotation_degrees", rotation_degrees, last_rotation, 0.5, Tween.TRANS_SINE, Tween.EASE_IN_OUT)
+
 		tween.start()
 	else:
 		# Si el modo de juego no es válido, no hacemos nada
