@@ -1,52 +1,64 @@
 extends Camera
 
-var speed := 10
-var mouse_sensitivity := 0.1
-var rotation_x := 0.0
-var rotation_y := 0.0
-var mouse_captured := true  #estado de captura del mouse
+var movement := preload("res://Entities/Camera/CameraMovement.gd").new()
+var mouse_control := preload("res://Entities/Camera/CameraMouse.gd").new()
+
+# Velocidad a la que se mueve la camara (Configurables desde el editor)
+export var speed_movement := 10
+
+# Sensibilidad del mouse para rotar la cámara (Configurables desde el editor)
+export var mouse_sensitivity := 0.1
+
+var camera_view_x := 0.0
+var camera_view_y := 0.0
+
+# Guardar posición y rotación previas
+var last_translation := Vector3()
+var last_rotation := Vector3()
+
+var mouse_captured := true
+
+onready var tween := Tween.new()
 
 func _ready():
-	capture_mouse()  # Iniciar con mouse capturado
+	mouse_control.capture_mouse(self)
+	GameModeContext.connect("game_mode_changed", self, "_on_game_mode_changed")
+	
+	add_child(tween)
 
-#función para alternar captura de mouse
 func toggle_mouse_capture():
 	if mouse_captured:
-		release_mouse()
+		mouse_control.release_mouse(self)
 	else:
-		capture_mouse()
-
-# capturar mouse
-func capture_mouse():
-	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
-	mouse_captured = true
-
-# liberar mouse
-func release_mouse():
-	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
-	mouse_captured = false
+		mouse_control.capture_mouse(self)
 
 func _input(event):
-	# Alternar captura con ESC
 	if event is InputEventKey and event.pressed:
 		if event.scancode == KEY_ESCAPE:
 			toggle_mouse_capture()
-	
-	# Solo procesar movimiento si mouse está capturado
-	if mouse_captured and event is InputEventMouseMotion:
-		rotation_y -= event.relative.x * mouse_sensitivity
-		rotation_x -= event.relative.y * mouse_sensitivity
-		rotation_x = clamp(rotation_x, -90, 90)
-		rotation_degrees = Vector3(rotation_x, rotation_y, 0)
+	movement.process_input(self, event)
 
 func _process(delta):
-	var dir := Vector3()
-	if Input.is_action_pressed("ui_up"):
-		dir -= transform.basis.z
-	if Input.is_action_pressed("ui_down"):
-		dir += transform.basis.z
-	if Input.is_action_pressed("ui_left"):
-		dir -= transform.basis.x
-	if Input.is_action_pressed("ui_right"):
-		dir += transform.basis.x
-	translation += dir.normalized() * speed * delta
+	movement.process_movement(self, delta)
+
+# Actualiza la rotacion y posición de la camara basado en el modo de juego
+func _on_game_mode_changed(game_mode):
+	if game_mode == GameModeContext.MODE_BUILD:	
+		last_translation = translation
+		last_rotation = rotation_degrees
+
+		var target_translation = Vector3(translation.x, 10, translation.z)
+
+		var target_rotation = Vector3(-90, rotation_degrees.y, rotation_degrees.z)
+
+		tween.interpolate_property(self, "translation", translation, target_translation, 0.5, Tween.TRANS_SINE, Tween.EASE_IN_OUT)
+		tween.interpolate_property(self, "rotation_degrees", rotation_degrees, target_rotation, 0.5, Tween.TRANS_SINE, Tween.EASE_IN_OUT)
+		tween.start()
+	elif game_mode == GameModeContext.MODE_PLACE:
+		# Restaura la posición y rotación previas
+		tween.interpolate_property(self, "translation", translation, last_translation, 0.5, Tween.TRANS_SINE, Tween.EASE_IN_OUT)
+		tween.interpolate_property(self, "rotation_degrees", rotation_degrees, last_rotation, 0.5, Tween.TRANS_SINE, Tween.EASE_IN_OUT)
+		tween.start()
+	else:
+		# Si el modo de juego no es válido, no hacemos nada
+		pass

@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=2]
+[gd_scene load_steps=3 format=2]
 
 [ext_resource path="res://Entities/Camera/Camera.gd" type="Script" id=1]
+[ext_resource path="res://UI/Crosshair/Crosshair.tscn" type="PackedScene" id=2]
 
 [node name="Camera" type="Camera"]
 transform = Transform( 1, 0, 0, 0, 0.707107, 0.707107, 0, -0.707107, 0.707107, 0, 13.9772, 13.8784 )
@@ -12,3 +13,7 @@ enabled = true
 exclude_parent = false
 cast_to = Vector3( 0, 0, -100 )
 collision_mask = 3
+
+[node name="Crosshair" parent="." instance=ExtResource( 2 )]
+
+[node name="Tween" type="Tween" parent="."]
