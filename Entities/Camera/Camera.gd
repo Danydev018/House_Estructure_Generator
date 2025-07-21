@@ -5,6 +5,7 @@ var mouse_control := preload("res://Entities/Camera/CameraMouse.gd").new()
 
 # Velocidad a la que se mueve la camara (Configurables desde el editor)
 export var speed_movement := 10
+export var height_for_build := 10
 
 # Sensibilidad del mouse para rotar la cámara (Configurables desde el editor)
 export var mouse_sensitivity := 0.1
@@ -26,14 +27,22 @@ func toggle_mouse_capture():
 	else:
 		mouse_control.capture_mouse(self)
 
-func get_raycast_collision():
-	var raycast = $RayCast
-	if raycast.is_colliding():
-		return {
-			"collider": raycast.get_collider(),
-			"position": raycast.get_collision_point()
-		}
-	return null
+func get_raycast_collision(screen_pos = null):
+    var from
+    var to
+    if screen_pos == null:
+        var viewport_size = get_viewport().size
+        screen_pos = viewport_size / 2
+    from = project_ray_origin(screen_pos)
+    to = from + project_ray_normal(screen_pos) * 100
+    var space_state = get_world().direct_space_state
+    var result = space_state.intersect_ray(from, to)
+    if result:
+        return {
+            "collider": result.collider,
+            "position": result.position
+        }
+    return null
 
 func _ready():
 	mouse_control.capture_mouse(self)
@@ -55,7 +64,7 @@ func _on_game_mode_changed(game_mode):
 		last_translation = translation
 		last_rotation = rotation_degrees
 
-		var target_translation = Vector3(translation.x, 10, translation.z)
+		var target_translation = Vector3(translation.x, height_for_build, translation.z)
 		var target_rotation = Vector3(-90, rotation_degrees.y, rotation_degrees.z)
 
 		tween.interpolate_property(self, "translation", translation, target_translation, 0.5, Tween.TRANS_SINE, Tween.EASE_IN_OUT)
