@@ -57,3 +57,40 @@ Una herramienta innovadora de construcción 3D basada en bloques, desarrollada c
    ```bash
    git clone https://github.com/Danydev018/House_Estructure_Generator.git
    cd House_Estructure_Generator
+
+## 🚀 Abrir y Ejecutar el Proyecto en Godot
+
+### 🖥️ PC
+
+#### Abrir el Proyecto
+
+1. Ejecuta **Godot Engine**
+2. Haz clic en **"Import"**
+3. Navega hasta la carpeta del proyecto y selecciona `project.godot`
+4. Haz clic en **"Import & Edit"**
+
+#### Ejecutar el Proyecto
+
+- Presiona `F5` o haz clic en el botón **"Play"**
+- Si se solicita, selecciona la escena principal: `Scenes/Main.tscn`
+
+---
+
+## 📱 Exportación e Instalación en Android
+
+### 🔧 Configurar Exportación Android
+
+1. En Godot, ve a:  
+   `Project → Export → Add Android`
+2. Configura el **Android SDK path**
+
+### 📦 Exportar APK
+
+- En el editor de Godot:  
+  `Project → Export → Android → Export Project`
+
+### 📲 Instalar en Dispositivo
+
+```bash
+adb install HouseStructureGenerator.apk
+
